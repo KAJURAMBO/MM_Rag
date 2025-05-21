@@ -28,17 +28,12 @@ wheels/
 # Virtual Environment
 .venv/
 venv/
-ENV/
 env/
-.env
-.venv
-venv
-ENV
-env
+ENV/
 
 # IDE
-.vscode/
 .idea/
+.vscode/
 *.swp
 *.swo
 .DS_Store
@@ -74,3 +69,11 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+
+# Project specific
+.cache/
+response_md/
+*.pdf
+
+# HuggingFace cache
+.cache/huggingface/
