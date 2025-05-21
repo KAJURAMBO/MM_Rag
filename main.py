@@ -47,9 +47,10 @@ def process_query(query: str, retriever: MultimodalRetriever):
     text_query_model = SentenceTransformer('all-MiniLM-L6-v2')
     text_query_embedding = text_query_model.encode(query)
     
-    # Generate image query embedding
+    # Generate image query embedding using CLIP's text encoder
     image_query_model = SentenceTransformer('clip-ViT-B-32')
-    image_query_embedding = image_query_model.encode(query)
+    # CLIP expects text queries to be wrapped in a list
+    image_query_embedding = image_query_model.encode([query], convert_to_numpy=True)[0]
     
     # Search for text and images separately
     text_results = retriever.search_text(text_query_embedding, k=5)  # Get 5 results but display top 2
@@ -81,6 +82,7 @@ def process_query(query: str, retriever: MultimodalRetriever):
             print(f"Image found on page {result['page']}")
             print(f"Similarity Score: {result['score']:.4f}")
             try:
+                # Display the actual image from the result, not the debug image
                 display_image(result['image'])
             except Exception as e:
                 logger.error(f"Error displaying image: {str(e)}")
@@ -97,13 +99,18 @@ def main():
         retriever = MultimodalRetriever()
         
         # Process PDF
-        pdf_path = "input.pdf"  # Replace with your PDF path
+        pdf_path = "input_1.pdf"  # Replace with your PDF path
         if not os.path.exists(pdf_path):
             logger.error(f"PDF file '{pdf_path}' not found.")
             return
             
         logger.info(f"Processing PDF: {pdf_path}")
         text_chunks, images = pdf_processor.extract_text_and_images(pdf_path)
+        
+        # Add debug logging for images
+        logger.info(f"Number of images extracted: {len(images)}")
+        for i, img in enumerate(images):
+            logger.info(f"Image {i+1}: Page {img['page']}, Format: {img['format']}")
         
         if not text_chunks and not images:
             logger.warning("No text or images found in the PDF.")
@@ -119,6 +126,10 @@ def main():
         if images:
             logger.info(f"Generating embeddings for {len(images)} images")
             images_with_embeddings = image_embedder.generate_embeddings(images)
+            # Add debug logging for image embeddings
+            logger.info(f"Number of images with embeddings: {len(images_with_embeddings)}")
+            for i, img in enumerate(images_with_embeddings):
+                logger.info(f"Image {i+1} embedding shape: {img['embedding'].shape}")
         else:
             images_with_embeddings = []
         

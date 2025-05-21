@@ -75,11 +75,33 @@ class MultimodalRetriever:
         results = []
         
         if self.image_index is not None and query_embedding.shape[0] == self.image_embedding_dim:
+            print(f"Searching image index with query shape: {query_embedding.shape}")
+            print(f"Image index dimension: {self.image_embedding_dim}")
+            print(f"Number of images in index: {len(self.image_data)}")
+            
             image_distances, image_indices = self.image_index.search(query_embedding.reshape(1, -1), k)
-            for dist, idx in zip(image_distances[0], image_indices[0]):
+            print(f"Raw distances: {image_distances[0]}")
+            print(f"Raw indices: {image_indices[0]}")
+            
+            # Normalize distances to [0, 1] range
+            max_dist = np.max(image_distances[0])
+            min_dist = np.min(image_distances[0])
+            if max_dist > min_dist:
+                normalized_distances = (image_distances[0] - min_dist) / (max_dist - min_dist)
+            else:
+                normalized_distances = np.zeros_like(image_distances[0])
+            
+            for dist, norm_dist, idx in zip(image_distances[0], normalized_distances, image_indices[0]):
                 if idx < len(self.image_data):
                     result = self.image_data[idx].copy()
-                    result['score'] = float(1 / (1 + dist))  # Convert distance to similarity score
+                    # Convert normalized distance to similarity score (1 - normalized_distance)
+                    result['score'] = float(1 - norm_dist)
+                    print(f"Image {idx} - Distance: {dist:.4f}, Normalized: {norm_dist:.4f}, Score: {result['score']:.4f}")
                     results.append(result)
+        else:
+            print("Image search conditions not met:")
+            print(f"Image index exists: {self.image_index is not None}")
+            if self.image_index is not None:
+                print(f"Query dimension: {query_embedding.shape[0]}, Expected: {self.image_embedding_dim}")
         
         return results 
