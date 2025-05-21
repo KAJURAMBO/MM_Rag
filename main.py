@@ -32,6 +32,62 @@ def display_image(image_data):
     except Exception as e:
         logger.error(f"Error displaying image: {str(e)}")
 
+def process_query(query: str, retriever: MultimodalRetriever):
+    """
+    Process a single query and display results.
+    Shows only top 2 results based on similarity scores.
+    
+    Args:
+        query (str): The search query
+        retriever (MultimodalRetriever): The retriever instance
+    """
+    logger.info(f"Processing query: {query}")
+    
+    # Generate text query embedding
+    text_query_model = SentenceTransformer('all-MiniLM-L6-v2')
+    text_query_embedding = text_query_model.encode(query)
+    
+    # Generate image query embedding
+    image_query_model = SentenceTransformer('clip-ViT-B-32')
+    image_query_embedding = image_query_model.encode(query)
+    
+    # Search for text and images separately
+    text_results = retriever.search_text(text_query_embedding, k=5)  # Get 5 results but display top 2
+    image_results = retriever.search_images(image_query_embedding, k=5)  # Get 5 results but display top 2
+    
+    # Sort results by similarity score and take top 2
+    text_results = sorted(text_results, key=lambda x: x['score'], reverse=True)[:2]
+    image_results = sorted(image_results, key=lambda x: x['score'], reverse=True)[:2]
+    
+    # Display text results
+    if text_results:
+        logger.info(f"Found {len(text_results)} text results")
+        print("\nTop 2 Text Results:")
+        for i, result in enumerate(text_results, 1):
+            print(f"\nText Result {i}:")
+            print(f"Text: {result['text']}")
+            print(f"Page: {result['page']}")
+            print(f"Similarity Score: {result['score']:.4f}")
+    else:
+        logger.info("No text results found")
+        print("\nNo text results found.")
+    
+    # Display image results
+    if image_results:
+        logger.info(f"Found {len(image_results)} image results")
+        print("\nTop 2 Image Results:")
+        for i, result in enumerate(image_results, 1):
+            print(f"\nImage Result {i}:")
+            print(f"Image found on page {result['page']}")
+            print(f"Similarity Score: {result['score']:.4f}")
+            try:
+                display_image(result['image'])
+            except Exception as e:
+                logger.error(f"Error displaying image: {str(e)}")
+    else:
+        logger.info("No image results found")
+        print("\nNo image results found.")
+
 def main():
     try:
         # Initialize components
@@ -70,50 +126,27 @@ def main():
         logger.info("Building search indices")
         retriever.build_indices(text_chunks_with_embeddings, images_with_embeddings)
         
-        # Example query
-        query = "Show me the image on fifth page"
-        logger.info(f"Processing query: {query}")
+        # Interactive query loop
+        print("\nWelcome to the Multimodal RAG System!")
+        print("You can now search through the PDF document.")
+        print("Type 'exit' or 'quit' to end the session.")
+        print("\nExample queries:")
+        print("- 'Show me the image on page 5'")
+        print("- 'Find text about marketing strategy'")
+        print("- 'Show me diagrams related to sales'")
         
-        # Generate text query embedding
-        text_query_model = SentenceTransformer('all-MiniLM-L6-v2')
-        text_query_embedding = text_query_model.encode(query)
-        
-        # Generate image query embedding
-        image_query_model = SentenceTransformer('clip-ViT-B-32')
-        image_query_embedding = image_query_model.encode(query)
-        
-        # Search for text and images separately
-        text_results = retriever.search_text(text_query_embedding, k=5)
-        image_results = retriever.search_images(image_query_embedding, k=5)
-        
-        # Display text results
-        if text_results:
-            logger.info(f"Found {len(text_results)} text results")
-            print("\nText Results:")
-            for i, result in enumerate(text_results, 1):
-                print(f"\nText Result {i}:")
-                print(f"Text: {result['text']}")
-                print(f"Page: {result['page']}")
-                print(f"Similarity Score: {result['score']:.4f}")
-        else:
-            logger.info("No text results found")
-            print("\nNo text results found.")
-        
-        # Display image results
-        if image_results:
-            logger.info(f"Found {len(image_results)} image results")
-            print("\nImage Results:")
-            for i, result in enumerate(image_results, 1):
-                print(f"\nImage Result {i}:")
-                print(f"Image found on page {result['page']}")
-                print(f"Similarity Score: {result['score']:.4f}")
-                try:
-                    display_image(result['image'])
-                except Exception as e:
-                    logger.error(f"Error displaying image: {str(e)}")
-        else:
-            logger.info("No image results found")
-            print("\nNo image results found.")
+        while True:
+            query = input("\nEnter your query (or 'exit' to quit): ").strip()
+            
+            if query.lower() in ['exit', 'quit']:
+                print("Thank you for using the Multimodal RAG System!")
+                break
+                
+            if not query:
+                print("Please enter a valid query.")
+                continue
+                
+            process_query(query, retriever)
             
     except Exception as e:
         logger.error(f"An error occurred: {str(e)}")

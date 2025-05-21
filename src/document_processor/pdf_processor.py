@@ -29,9 +29,11 @@ class PDFProcessor:
         try:
             # First try with PyMuPDF for better image extraction
             doc = fitz.open(pdf_path)
+            self.logger.info(f"Opened PDF with {len(doc)} pages")
             
             for page_num in range(len(doc)):
                 page = doc[page_num]
+                self.logger.info(f"Processing page {page_num + 1}")
                 
                 # Extract text
                 text = page.get_text()
@@ -41,14 +43,20 @@ class PDFProcessor:
                         'page': page_num + 1,
                         'type': 'text'
                     })
+                    self.logger.info(f"Extracted text from page {page_num + 1}")
                 
                 # Extract images
                 image_list = page.get_images(full=True)
+                self.logger.info(f"Found {len(image_list)} images on page {page_num + 1}")
+                
                 for img_index, img in enumerate(image_list):
                     try:
                         xref = img[0]
                         base_image = doc.extract_image(xref)
                         image_bytes = base_image["image"]
+                        image_ext = base_image["ext"]
+                        
+                        self.logger.info(f"Extracted image {img_index + 1} from page {page_num + 1} with format {image_ext}")
                         
                         # Try to open the image
                         try:
@@ -62,12 +70,18 @@ class PDFProcessor:
                             elif image.mode != 'RGB':
                                 image = image.convert('RGB')
                             
+                            # Save image temporarily for debugging
+                            debug_path = f"debug_image_p{page_num + 1}_i{img_index + 1}.{image_ext}"
+                            image.save(debug_path)
+                            self.logger.info(f"Saved debug image to {debug_path}")
+                            
                             images.append({
                                 'image': image,
                                 'page': page_num + 1,
-                                'type': 'image'
+                                'type': 'image',
+                                'format': image_ext
                             })
-                            self.logger.info(f"Successfully extracted image {img_index + 1} from page {page_num + 1}")
+                            self.logger.info(f"Successfully processed image {img_index + 1} from page {page_num + 1}")
                             
                         except Exception as e:
                             self.logger.error(f"Error processing image {img_index + 1} from page {page_num + 1}: {str(e)}")
@@ -85,6 +99,7 @@ class PDFProcessor:
             try:
                 with open(pdf_path, 'rb') as file:
                     pdf_reader = PyPDF2.PdfReader(file)
+                    self.logger.info(f"Falling back to PyPDF2, found {len(pdf_reader.pages)} pages")
                     
                     for page_num in range(len(pdf_reader.pages)):
                         page = pdf_reader.pages[page_num]
@@ -97,6 +112,7 @@ class PDFProcessor:
                                 'page': page_num + 1,
                                 'type': 'text'
                             })
+                            self.logger.info(f"Extracted text from page {page_num + 1} using PyPDF2")
                         
                         # Extract images
                         if '/Resources' in page and '/XObject' in page['/Resources']:
@@ -116,10 +132,16 @@ class PDFProcessor:
                                         elif image.mode != 'RGB':
                                             image = image.convert('RGB')
                                         
+                                        # Save image temporarily for debugging
+                                        debug_path = f"debug_image_p{page_num + 1}_pypdf2.png"
+                                        image.save(debug_path)
+                                        self.logger.info(f"Saved debug image to {debug_path}")
+                                        
                                         images.append({
                                             'image': image,
                                             'page': page_num + 1,
-                                            'type': 'image'
+                                            'type': 'image',
+                                            'format': 'png'
                                         })
                                         self.logger.info(f"Successfully extracted image from page {page_num + 1} using PyPDF2")
                                         
@@ -130,6 +152,7 @@ class PDFProcessor:
                 self.logger.error(f"Error processing PDF with PyPDF2: {str(e)}")
                 raise
         
+        self.logger.info(f"Extraction complete. Found {len(text_chunks)} text chunks and {len(images)} images")
         return text_chunks, images
 
     def chunk_text(self, text: str, chunk_size: int = 1000) -> List[str]:
