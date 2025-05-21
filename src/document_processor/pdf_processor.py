@@ -12,6 +12,9 @@ class PDFProcessor:
         # Set up logging
         logging.basicConfig(level=logging.INFO)
         self.logger = logging.getLogger(__name__)
+        # Create debug_images directory if it doesn't exist
+        self.debug_dir = "debug_images"
+        os.makedirs(self.debug_dir, exist_ok=True)
 
     def extract_text_and_images(self, pdf_path: str) -> Tuple[List[Dict], List[Dict]]:
         """
@@ -72,7 +75,7 @@ class PDFProcessor:
                                     image = image.convert('RGB')
                                 
                                 # Save image temporarily for debugging
-                                debug_path = f"debug_image_p{page_num + 1}_i{img_index + 1}.{image_ext}"
+                                debug_path = os.path.join(self.debug_dir, f"debug_image_p{page_num + 1}_i{img_index + 1}.{image_ext}")
                                 image.save(debug_path)
                                 self.logger.info(f"Saved debug image to {debug_path}")
                                 
@@ -139,7 +142,7 @@ class PDFProcessor:
                                             
                                             # Save image temporarily for debugging
                                             safe_obj_name = obj.replace('/', '_').replace('\\', '_')
-                                            debug_path = f"debug_image_p{page_num + 1}_pypdf2_{safe_obj_name}.png"
+                                            debug_path = os.path.join(self.debug_dir, f"debug_image_p{page_num + 1}_pypdf2_{safe_obj_name}.png")
                                             image.save(debug_path)
                                             self.logger.info(f"Saved debug image from PyPDF2 to {debug_path}")
                                             
