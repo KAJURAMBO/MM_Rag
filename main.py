@@ -99,7 +99,7 @@ def main():
         retriever = MultimodalRetriever()
         
         # Process PDF
-        pdf_path = "input_1.pdf"  # Replace with your PDF path
+        pdf_path = "input_2.pdf"  # Replace with your PDF path
         if not os.path.exists(pdf_path):
             logger.error(f"PDF file '{pdf_path}' not found.")
             return
